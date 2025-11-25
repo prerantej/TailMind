@@ -299,14 +299,14 @@ export default function App() {
               <button
                 onClick={() => setChatOpen(true)}
                 aria-label="Open chat"
-                className="mt-4 w-12 h-12 rounded-full bg-neutral-900 border border-neutral-800 text-neutral-200 shadow-sm flex items-center justify-center hover:scale-[1.03] transition-transform duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 relative group"
+                className="chat-toggle glow mt-4 w-12 h-12 bg-neutral-900 border border-neutral-800 text-neutral-200 shadow-sm flex items-center justify-center"
                 style={{ borderWidth: "1px" }}
               >
                 <Bot className="w-6 h-6 text-neutral-200" />
                 <span className="pointer-events-none absolute -top-10 left-1/2 transform -translate-x-1/2 scale-0 group-hover:scale-100 transition-transform duration-150 ease-out bg-neutral-800 border border-neutral-700 text-xs text-neutral-200 px-2 py-1 rounded-md whitespace-nowrap">
                   Open chat
                 </span>
-              </button>
+            </button>
             </div>
           </aside>
         )}

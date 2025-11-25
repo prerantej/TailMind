@@ -5,6 +5,10 @@ import re
 import logging
 from typing import Optional, Any, List
 
+# Load environment variables FIRST, before any other imports
+from dotenv import load_dotenv
+load_dotenv()
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------
@@ -37,7 +41,13 @@ from ..models import Email, EmailProcessing, Prompt, Draft
 # LOAD ENV VARS
 # ---------------------------------------------------------
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+
+# Log configuration status
+if GEMINI_API_KEY:
+    logger.info(f"✅ GEMINI_API_KEY loaded, using model: {GEMINI_MODEL}")
+else:
+    logger.warning("⚠️ GEMINI_API_KEY not found in environment variables")
 
 # ---------------------------------------------------------
 # Helper: attempt to create a genai client (returns None on failure)
@@ -54,18 +64,17 @@ def _create_genai_client():
     try:
         if GENAI_IMPL == "google-genai":
             # new SDK: create client instance
-            # defensive: in most versions it's genai.Client(api_key=...)
             client = genai_mod.Client(api_key=GEMINI_API_KEY)
-            logger.info("Created google-genai Client.")
+            logger.info("✅ Created google-genai Client successfully.")
             return client
         elif GENAI_IMPL == "google-generativeai":
             # legacy SDK
             genai_mod.configure(api_key=GEMINI_API_KEY)
             client = genai_mod.GenerativeModel(model_name=GEMINI_MODEL)
-            logger.info("Created legacy google.generativeai client.")
+            logger.info("✅ Created legacy google.generativeai client successfully.")
             return client
-    except Exception:
-        logger.exception("Failed to initialize GenAI client.")
+    except Exception as e:
+        logger.exception(f"❌ Failed to initialize GenAI client: {e}")
         return None
 
 # =========================================================
@@ -132,6 +141,11 @@ class LLMService:
         self.model = model
         # Create a client instance for this service (may be None)
         self.client = _create_genai_client()
+        
+        if self.client:
+            logger.info(f"✅ LLMService initialized with model: {self.model}")
+        else:
+            logger.warning("⚠️ LLMService initialized without client - LLM features disabled")
 
     # ------------------------------
     # INTERNAL CALL WRAPPER (defensive across SDK versions)
@@ -142,50 +156,32 @@ class LLMService:
             return None
 
         try:
-            # 1) Try new SDK shape: client.models.generate(...) => response with `.text` or structured outputs
-            try:
-                if hasattr(self.client, "models"):
-                    # many google-genai examples use client.models.generate(...)
-                    response = self.client.models.generate(model=self.model, prompt=prompt)
+            # 1) Try new SDK shape: client.models.generate_content(...)
+            if GENAI_IMPL == "google-genai":
+                try:
+                    response = self.client.models.generate_content(
+                        model=self.model,
+                        contents=prompt
+                    )
                     text = _extract_text_from_response(response)
-                    if text is not None:
+                    if text:
                         return text
-            except Exception:
-                logger.debug("client.models.generate pattern failed, trying other patterns.", exc_info=False)
+                except Exception as e:
+                    logger.debug(f"client.models.generate_content failed: {e}")
 
-            # 2) Try new SDK alternative: client.generate_text(...)
-            try:
-                if hasattr(self.client, "generate_text"):
-                    response = self.client.generate_text(model=self.model, input=prompt)
-                    text = _extract_text_from_response(response)
-                    if text is not None:
-                        return text
-            except Exception:
-                logger.debug("client.generate_text pattern failed.", exc_info=False)
-
-            # 3) Try generic 'responses' pattern
-            try:
-                if hasattr(self.client, "responses") and hasattr(self.client.responses, "generate"):
-                    response = self.client.responses.generate(model=self.model, input=prompt)
-                    text = _extract_text_from_response(response)
-                    if text is not None:
-                        return text
-            except Exception:
-                logger.debug("client.responses.generate pattern failed.", exc_info=False)
-
-            # 4) Legacy SDK pattern
-            try:
-                if GENAI_IMPL == "google-generativeai" and hasattr(self.client, "generate_content"):
+            # 2) Try legacy SDK pattern
+            if GENAI_IMPL == "google-generativeai" and hasattr(self.client, "generate_content"):
+                try:
                     response = self.client.generate_content(prompt)
                     return getattr(response, "text", str(response))
-            except Exception:
-                logger.debug("legacy client.generate_content pattern failed.", exc_info=False)
+                except Exception as e:
+                    logger.debug(f"legacy generate_content failed: {e}")
 
             logger.error("All GenAI call patterns failed.")
             return None
 
         except Exception as e:
-            logger.exception("Gemini call failed: %s", e)
+            logger.exception(f"Gemini call failed: {e}")
             return None
 
     # ------------------------------
@@ -302,14 +298,7 @@ async def _maybe_aclose_client():
     Safe no-op if no client or no 'aclose'/'close' method.
     """
     try:
-        # If global instance exists, use it
-        global llm_service  # may be defined later below
-        client = None
-        try:
-            client = getattr(llm_service, "client", None)
-        except Exception:
-            client = None
-
+        client = getattr(llm_service, "client", None)
         if client is None:
             return
 
@@ -338,41 +327,23 @@ def _extract_text_from_response(response) -> Optional[str]:
     if response is None:
         return None
 
-    # common patterns: response.text, response.output_text, response.output[0].text, response.candidates
     try:
-        # direct attribute 'text'
+        # For google-genai SDK 1.x: response.text
         text = getattr(response, "text", None)
         if text:
             return text if isinstance(text, str) else str(text)
 
-        # some wrappers: response.output_text
-        if hasattr(response, "output_text"):
-            t = getattr(response, "output_text")
-            if t:
-                return t if isinstance(t, str) else str(t)
+        # Try candidates[0].content.parts[0].text (common in new SDK)
+        if hasattr(response, "candidates") and response.candidates:
+            cand = response.candidates[0]
+            if hasattr(cand, "content") and hasattr(cand.content, "parts"):
+                parts = cand.content.parts
+                if parts and len(parts) > 0:
+                    part_text = getattr(parts[0], "text", None)
+                    if part_text:
+                        return part_text
 
-        # nested: response.output[0].content / response.output[0].text
-        out = getattr(response, "output", None)
-        if out:
-            # if list-like
-            try:
-                first = out[0]
-                # content -> text
-                t = getattr(first, "content", None) or getattr(first, "text", None)
-                if t:
-                    return t if isinstance(t, str) else str(t)
-            except Exception:
-                pass
-
-        # some responses expose .candidates list with .text
-        candidates = getattr(response, "candidates", None)
-        if candidates and len(candidates) > 0:
-            cand0 = candidates[0]
-            t = getattr(cand0, "text", None) or getattr(cand0, "content", None)
-            if t:
-                return t if isinstance(t, str) else str(t)
-
-        # fallback: str(response) but be cautious
+        # Fallback: str(response)
         return str(response)
     except Exception:
         logger.exception("Failed to extract text from response object.")

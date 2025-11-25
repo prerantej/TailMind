@@ -3,6 +3,5 @@ uvicorn[standard]
 sqlmodel
 pydantic
 python-dotenv
-groq==0.5.0        # Groq python client (adjust version if newer)
 requests>=2.28.0   # used for HTTP fallback when SDK missing
 google-generative-ai

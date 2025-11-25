@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import logging
 import traceback
 from pathlib import Path
-from typing import Optional,List
+from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -12,13 +12,11 @@ from sqlmodel import select
 import traceback as _traceback
 from pydantic import BaseModel
 
-
 from .services.llm_service import safe_json_extract
-
 
 # --- load .env (resolve relative to this file -> backend/.env) ---
 BASE_DIR = Path(__file__).resolve().parent  # backend/src
-env_path = BASE_DIR.parent / ".env"          # backend/.env
+env_path = BASE_DIR.parent / ".env"         # backend/.env
 print("Loading .env from:", env_path)
 load_dotenv(env_path)
 
@@ -26,41 +24,55 @@ load_dotenv(env_path)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("email-agent-backend")
 
-# --- import DB, models, services (use package-relative imports) ---
+# --- import DB, models, services ---
 from .db import engine, create_db_and_tables, get_session
 from .models import Email, EmailProcessing, Prompt, Draft
 from .services.ingestion_service import load_and_process_inbox
 
-# Import the global instance created in your llm_service module.
+# Import global LLM service instance
 try:
     from .services.llm_service import llm_service as llm
 except Exception:
     logger.exception(
-        "Failed to import llm_service. Make sure GEMINI_API_KEY is set and backend/src/services/llm_service.py is valid."
+        "Failed to import llm_service. Make sure GEMINI_API_KEY is set correctly."
     )
     raise
 
-# create DB tables if they don't exist
+# --- Create DB tables if they don't exist ---
 create_db_and_tables()
 
+# --- FastAPI app ---
 app = FastAPI(title="Email Productivity Agent - Backend")
 
-# Routers (if you have routers in src/routers)
-try:
-    from .routers.agent import router as agent_router
-    app.include_router(agent_router)
-except Exception:
-    logger.debug("Router import failed or not present: continuing without agent router.")
+# ------------------------------------------------------------------
+# ✅ PRODUCTION CORS CONFIGURATION
+# ------------------------------------------------------------------
+# Set this on Render:
+# FRONTEND_URL = https://your-frontend.vercel.app
+FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
 
-# CORS - dev only
+allowed_origins = [FRONTEND_URL] if FRONTEND_URL != "*" else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # for dev only; restrict in prod
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ------------------------------------------------------------------
+# Routers (if any)
+# ------------------------------------------------------------------
+try:
+    from .routers.agent import router as agent_router
+    app.include_router(agent_router)
+except Exception:
+    logger.debug("Router import failed or not present. Continuing without router.")
+
+# ------------------------------------------------------------------
+# Pydantic Schemas
+# ------------------------------------------------------------------
 class DraftCreate(BaseModel):
     email_id: int
     subject: str
@@ -69,11 +81,12 @@ class DraftCreate(BaseModel):
 class BatchDelete(BaseModel):
     ids: List[int]
 
+# ------------------------------------------------------------------
+# Endpoints
+# ------------------------------------------------------------------
+
 @app.post("/inbox/load")
 async def inbox_load(mock: bool = True, reset: bool = Query(False)):
-    """
-    DEV endpoint: loads mock inbox and processes it.
-    """
     try:
         processed = load_and_process_inbox(engine, llm)
         return {"status": "ok", "result": processed}
@@ -181,20 +194,13 @@ def generate_draft(email_id: int, tone: str = "friendly"):
         return {"draft": {"email_id": email.id, "subject": subject.strip(), "body": body.strip()}}
 
 
-
-
 @app.post("/draft/save")
 def save_draft(payload: DraftCreate):
-    """
-    Save a draft generated/edited by the user.
-    Expects JSON body: {"email_id": 1, "subject": "...", "body": "..."}
-    """
     with get_session() as session:
         email = session.get(Email, payload.email_id)
         if not email:
             raise HTTPException(status_code=404, detail="Email not found")
 
-        # Basic validation / normalization
         subj = (payload.subject or "").strip()
         bod = (payload.body or "").strip()
         if not bod:
@@ -205,12 +211,10 @@ def save_draft(payload: DraftCreate):
         session.commit()
         session.refresh(d)
         return {"status": "saved", "draft": d.dict()}
-    
+
+
 @app.get("/draft/{draft_id}")
 def get_draft(draft_id: int):
-    """
-    Return a saved draft by its DB id, plus the original email for context (optional).
-    """
     with get_session() as session:
         d = session.get(Draft, draft_id)
         if not d:
@@ -218,21 +222,18 @@ def get_draft(draft_id: int):
         email = session.get(Email, d.email_id)
         return {"draft": d.dict(), "email": email.dict() if email else None}
 
+
 @app.delete("/draft/{draft_id}")
 def delete_draft(draft_id: int):
-    """
-    Delete a saved draft by id.
-    Returns 200 with JSON on success, 404 if not found.
-    """
     with get_session() as session:
         d = session.get(Draft, draft_id)
         if not d:
             raise HTTPException(status_code=404, detail="Draft not found")
-        # remove the draft row
         session.delete(d)
         session.commit()
         return {"status": "deleted", "id": draft_id}
-    
+
+
 @app.delete("/drafts/batch-delete")
 def batch_delete(payload: BatchDelete):
     with get_session() as session:
@@ -254,6 +255,4 @@ def list_drafts():
 
 
 if __name__ == "__main__":
-    # Recommended dev run: from backend/ folder:
-    # python -m uvicorn src.main:app --reload --port 8000
     uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)

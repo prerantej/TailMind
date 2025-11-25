@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import logging
 import traceback
 from pathlib import Path
-from typing import Optional
+from typing import Optional,List
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -66,6 +66,8 @@ class DraftCreate(BaseModel):
     subject: str
     body: str
 
+class BatchDelete(BaseModel):
+    ids: List[int]
 
 @app.post("/inbox/load")
 async def inbox_load(mock: bool = True, reset: bool = Query(False)):
@@ -215,6 +217,33 @@ def get_draft(draft_id: int):
             raise HTTPException(status_code=404, detail="Draft not found")
         email = session.get(Email, d.email_id)
         return {"draft": d.dict(), "email": email.dict() if email else None}
+
+@app.delete("/draft/{draft_id}")
+def delete_draft(draft_id: int):
+    """
+    Delete a saved draft by id.
+    Returns 200 with JSON on success, 404 if not found.
+    """
+    with get_session() as session:
+        d = session.get(Draft, draft_id)
+        if not d:
+            raise HTTPException(status_code=404, detail="Draft not found")
+        # remove the draft row
+        session.delete(d)
+        session.commit()
+        return {"status": "deleted", "id": draft_id}
+    
+@app.delete("/drafts/batch-delete")
+def batch_delete(payload: BatchDelete):
+    with get_session() as session:
+        deleted_ids = []
+        for draft_id in payload.ids:
+            d = session.get(Draft, draft_id)
+            if d:
+                session.delete(d)
+                deleted_ids.append(draft_id)
+        session.commit()
+        return {"status": "deleted", "deleted_ids": deleted_ids}
 
 
 @app.get("/drafts")

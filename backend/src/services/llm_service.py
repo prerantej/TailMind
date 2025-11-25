@@ -276,16 +276,16 @@ class LLMService:
 
         return resp.strip()
 
-async def _maybe_aclose_client():
-    try:
-        client = getattr(_get_runtime_client(), "client", None)  # or import the client instance
-        if client is None:
-            return
-        aclose = getattr(client, "aclose", None)
-        if callable(aclose):
-            await aclose()
-    except Exception:
-        logger.exception("Error closing GenAI client (ignored).")
+    async def _maybe_aclose_client():
+        try:
+            client = getattr(_get_runtime_client(), "client", None)  # or import the client instance
+            if client is None:
+                return
+            aclose = getattr(client, "aclose", None)
+            if callable(aclose):
+                await aclose()
+        except Exception:
+            logger.exception("Error closing GenAI client (ignored).")
 
 # ---------------------------------------------------------
 #  GLOBAL INSTANCE

@@ -5,6 +5,7 @@ import SidebarShell from "./components/SidebarShell"; // kept if you want to reu
 import Inbox from "./pages/Inbox";
 import EmailDetail from "./pages/EmailDetail";
 import PromptBrain from "./pages/PromptBrain";
+import DraftDetail from "./pages/DraftDetail";
 import Drafts from "./pages/Drafts";
 import Welcome from "./pages/Welcome";
 import ChatBox, { MobileFloatingWrapper } from "./components/ChatBox";
@@ -121,8 +122,9 @@ export default function App() {
               />
               <Route path="/email/:id" element={<EmailDetail emailId={selectedEmailId} />} />
               <Route path="/prompt-brain" element={<PromptBrain />} />
-              <Route path="/drafts" element={<Drafts onOpenDraft={(id) => navigate(`/email/${id}`)} />} />
+              <Route path="/drafts" element={<Drafts onOpenDraft={(id) => navigate(`/draft/${id}`)} />} />
               <Route path="*" element={<Welcome />} />
+              <Route path="/draft/:id" element={<DraftDetail />} />
             </Routes>
           </div>
         </main>

@@ -203,6 +203,19 @@ def save_draft(payload: DraftCreate):
         session.commit()
         session.refresh(d)
         return {"status": "saved", "draft": d.dict()}
+    
+@app.get("/draft/{draft_id}")
+def get_draft(draft_id: int):
+    """
+    Return a saved draft by its DB id, plus the original email for context (optional).
+    """
+    with get_session() as session:
+        d = session.get(Draft, draft_id)
+        if not d:
+            raise HTTPException(status_code=404, detail="Draft not found")
+        email = session.get(Email, d.email_id)
+        return {"draft": d.dict(), "email": email.dict() if email else None}
+
 
 @app.get("/drafts")
 def list_drafts():

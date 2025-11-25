@@ -71,7 +71,7 @@ export default function SidebarShell({ initialCollapsed = false, onToggle = null
 
       <div>
         <div className="mb-6">
-          <div className="text-2xl font-semibold">Ocean AI</div>
+          <div className="text-2xl font-semibold">TailMind</div>
           <div className="text-xs text-neutral-400">Smart inbox & agent</div>
         </div>
 

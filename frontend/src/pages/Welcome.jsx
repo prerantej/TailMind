@@ -5,13 +5,9 @@ export default function Welcome() {
   return (
     <div className="h-[70vh] flex items-center justify-center">
       <div className="text-center max-w-2xl">
-        <img
-          src="/mnt/data/a221586b-b9dc-4843-924e-a5d02da2d88c.png"
-          alt="Ocean AI"
-          className="mx-auto mb-6 w-40 h-40 object-contain rounded-lg opacity-95"
-        />
-        <h1 className="text-4xl font-semibold mb-2">Ocean AI</h1>
-        <p className="text-neutral-400 mb-6">
+        
+        <h1 className="text-5xl font-semibold mb-2">TailMind</h1>
+        <p className="text-neutral-400 mb-6 gap-3">
           Smart inbox, AI agent & prompt brain — manage emails, generate drafts, and extract tasks quickly.
         </p>
 

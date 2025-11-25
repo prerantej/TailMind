@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optional: small customizations for dark theme */
+:root {
+  --card-bg: #0b1220;
+}
+
+.dark body {
+  background-color: #05060a;
+}
+
+/* Add a smooth focus ring for accessibility */
+:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}

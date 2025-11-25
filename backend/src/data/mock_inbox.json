@@ -1,0 +1,38 @@
+[
+  {
+    "sender": "alice@example.com",
+    "recipients": "you@example.com",
+    "subject": "Project update - milestone 1",
+    "body": "Hi team,\n\nWe’ve officially wrapped up milestone 1 for the Phoenix Revamp project. Over the past two weeks, the engineering and design teams collaborated to finalize the feature specifications, UI wireframes, and the initial implementation architecture. The attached report includes the summary of completed tasks, outstanding issues, and blockers that we identified during our internal review.\n\nPlease review the attached report and let me know if you see anything missing or incorrect. We need to finalize this before submitting it to leadership. Could you confirm your approval by Friday so that I can consolidate everyone's input?\n\nThanks for staying on top of this.\nBest,\nAlice",
+    "timestamp": "2025-11-20T10:15:00"
+  },
+  {
+    "sender": "newsletter@news.com",
+    "recipients": "you@example.com",
+    "subject": "Daily News Roundup",
+    "body": "Good morning!\n\nHere are today's top breaking stories from around the world. We've included extended analyses, expert commentary, and detailed reports across politics, technology, global markets, entertainment, sports, and science. Our editorial team has compiled the essential updates you need to stay informed.\n\nScroll down for long-form investigative pieces, podcasts, interactive data charts, and special reports curated by our newsroom. To manage your preferences or unsubscribe at any time, click the link at the bottom of this email.\n\nHave a productive day!\n— The Daily News Team",
+    "timestamp": "2025-11-19T08:00:00"
+  },
+  {
+    "sender": "bob@company.com",
+    "recipients": "you@example.com",
+    "subject": "Meeting request: Sync next week",
+    "body": "Hey,\n\nI’ve been reviewing the updates you shared regarding the Q4 deployment plan, and I think it would be helpful for us to walk through the timeline together. There are a few dependencies involving DevOps and QA that I want to clarify before we finalize the schedule.\n\nWould you be available to meet next Tuesday at 3pm? I’d like to spend roughly 45 minutes going over the risk mitigation plan and a few open questions the leadership team raised. Please confirm your availability so that I can send out the official calendar invite.\n\nThanks!\nBob",
+    "timestamp": "2025-11-18T09:30:00"
+  },
+  {
+    "sender": "hr@company.com",
+    "recipients": "you@example.com",
+    "subject": "Action required: Benefits enrollment",
+    "body": "Hello,\n\nThis is a reminder that open enrollment for employee benefits is currently in progress. This year, we’ve added several new healthcare options, updated dental and vision plans, and introduced wellness reimbursements that you may want to take advantage of. The benefits portal contains detailed comparisons to help you decide which plan best fits your needs.\n\nPlease make sure to review your selections carefully. Enrollment closes on December 2nd, and no changes can be made after that date unless you experience a qualifying life event. If you have questions about specific coverage details, our HR specialists are hosting virtual office hours throughout the week.\n\nThank you,\nHR Team",
+    "timestamp": "2025-11-15T12:05:00"
+  },
+  {
+    "sender": "client@externalcorp.com",
+    "recipients": "you@example.com",
+    "subject": "Invoice Update Needed",
+    "body": "Hi,\n\nWe’ve completed our internal audit of last month’s billing cycle and noticed that one of the line items in the invoice you sent appears to be inconsistent with the contracted rate. It seems the hourly rate for the integration work was calculated incorrectly, which means our finance department is unable to process the payment until the document is corrected.\n\nCould you update the invoice with the accurate values and resend it by end of day tomorrow? Our team is trying to close the books for the quarter, and timely corrections will help us avoid delays in issuing payments.\n\nThanks for your quick attention to this.\n— Finance Team",
+    "timestamp": "2025-11-17T15:45:00"
+  }
+  
+]

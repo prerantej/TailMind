@@ -10,6 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from sqlmodel import select
 import traceback as _traceback
+from pydantic import BaseModel
+
 
 from .services.llm_service import safe_json_extract
 
@@ -58,6 +60,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class DraftCreate(BaseModel):
+    email_id: int
+    subject: str
+    body: str
 
 
 @app.post("/inbox/load")
@@ -175,21 +182,27 @@ def generate_draft(email_id: int, tone: str = "friendly"):
 
 
 @app.post("/draft/save")
-def save_draft(email_id: int, subject: str, body: str):
+def save_draft(payload: DraftCreate):
     """
     Save a draft generated/edited by the user.
+    Expects JSON body: {"email_id": 1, "subject": "...", "body": "..."}
     """
     with get_session() as session:
-        email = session.get(Email, email_id)
+        email = session.get(Email, payload.email_id)
         if not email:
             raise HTTPException(status_code=404, detail="Email not found")
 
-        d = Draft(email_id=email.id, subject=subject, body=body)
+        # Basic validation / normalization
+        subj = (payload.subject or "").strip()
+        bod = (payload.body or "").strip()
+        if not bod:
+            raise HTTPException(status_code=400, detail="Draft body cannot be empty")
+
+        d = Draft(email_id=email.id, subject=subj, body=bod)
         session.add(d)
         session.commit()
         session.refresh(d)
         return {"status": "saved", "draft": d.dict()}
-
 
 @app.get("/drafts")
 def list_drafts():

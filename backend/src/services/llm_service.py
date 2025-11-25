@@ -41,31 +41,28 @@ from ..models import Email, EmailProcessing, Prompt, Draft
 # LOAD ENV VARS
 # ---------------------------------------------------------
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 # ---------------------------------------------------------
 # Initialize GenAI client (if SDK available)
 # ---------------------------------------------------------
 
-client = None
-
-if GENAI_IMPL == "google-genai":
+def _create_genai_client():
+    """Create and return a genai client or None if missing/failed."""
+    if not GEMINI_API_KEY:
+        logger.warning("GEMINI_API_KEY not provided — LLM disabled.")
+        return None
     try:
-        client = genai_mod.Client(api_key=GEMINI_API_KEY)
-    except Exception as e:
-        logger.exception("Failed to initialize google-genai Client.")
-        client = None
-
-elif GENAI_IMPL == "google-generativeai":
-    try:
-        genai_mod.configure(api_key=GEMINI_API_KEY)
-        client = genai_mod.GenerativeModel(model_name=GEMINI_MODEL)
+        if GENAI_IMPL == "google-genai":
+            return genai_mod.Client(api_key=GEMINI_API_KEY)
+        elif GENAI_IMPL == "google-generativeai":
+            genai_mod.configure(api_key=GEMINI_API_KEY)
+            return genai_mod.GenerativeModel(model_name=GEMINI_MODEL)
     except Exception:
-        logger.exception("Failed to initialize legacy google-generativeai.")
-        client = None
+        logger.exception("Failed to initialize GenAI client.")
+        return None
+    
 
-else:
-    logger.warning("No LLM SDK detected – dummy mode enabled.")
 
 
 # =========================================================
@@ -124,6 +121,8 @@ def _get_prompt_from_db(key: str) -> Optional[str]:
     except Exception:
         logger.exception("Failed to load prompt from DB for key=%s", key)
         return None
+    
+
 
 
 # =========================================================
@@ -277,6 +276,16 @@ class LLMService:
 
         return resp.strip()
 
+async def _maybe_aclose_client():
+    try:
+        client = getattr(_get_runtime_client(), "client", None)  # or import the client instance
+        if client is None:
+            return
+        aclose = getattr(client, "aclose", None)
+        if callable(aclose):
+            await aclose()
+    except Exception:
+        logger.exception("Error closing GenAI client (ignored).")
 
 # ---------------------------------------------------------
 #  GLOBAL INSTANCE

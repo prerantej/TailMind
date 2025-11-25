@@ -85,6 +85,8 @@ class BatchDelete(BaseModel):
 # Endpoints
 # ------------------------------------------------------------------
 
+
+
 @app.post("/inbox/load")
 async def inbox_load(mock: bool = True, reset: bool = Query(False)):
     try:
@@ -252,6 +254,14 @@ def list_drafts():
     with get_session() as session:
         drafts = session.exec(select(Draft)).all()
         return [d.dict() for d in drafts]
+    
+@app.on_event("shutdown")
+async def shutdown_event():
+    try:
+        from .services.llm_service import _maybe_aclose_client
+        await _maybe_aclose_client()
+    except Exception:
+        logger.exception("Error during LLM client shutdown (ignored).")
 
 
 if __name__ == "__main__":

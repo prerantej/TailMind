@@ -1,5 +1,6 @@
 // src/pages/Welcome.jsx
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function Welcome() {
   return (
@@ -12,8 +13,18 @@ export default function Welcome() {
         </p>
 
         <div className="flex justify-center gap-3">
-          <a href="/inbox" className="px-4 py-2 bg-indigo-600 rounded-md text-white text-sm">Open Inbox</a>
-          <a href="/prompt-brain" className="px-4 py-2 border border-neutral-800 rounded-md text-sm text-neutral-200">Edit Prompts</a>
+          <Link 
+            to="/inbox" 
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md text-white text-sm transition-colors"
+          >
+            Open Inbox
+          </Link>
+          <Link 
+            to="/prompt-brain" 
+            className="px-4 py-2 border border-neutral-800 hover:bg-neutral-900 rounded-md text-sm text-neutral-200 transition-colors"
+          >
+            Edit Prompts
+          </Link>
         </div>
       </div>
     </div>

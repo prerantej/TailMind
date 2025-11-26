@@ -31,4 +31,4 @@ class Draft(SQLModel, table=True):
     email_id: Optional[int] = Field(foreign_key="email.id", index=True)
     subject: str
     body: str
-    created_at: datetime = Field(default_factory=datetime.now)
+    # Note: created_at removed to match existing database schema

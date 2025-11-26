@@ -263,16 +263,21 @@ async def get_email_detail(email_id: int):
         else:
             timestamp_str = str(email.timestamp)
         
+        # Return format that EmailDetail.jsx expects
         return {
-            "id": email.id,
-            "sender": email.sender,
-            "recipients": email.recipients,
-            "subject": email.subject,
-            "body": email.body,
-            "timestamp": timestamp_str,
-            "category": processing.category if processing else None,
-            "tasks": processing.tasks_json if processing else None,
-            "draft": processing.draft_json if processing else None
+            "email": {
+                "id": email.id,
+                "sender": email.sender,
+                "recipients": email.recipients,
+                "subject": email.subject,
+                "body": email.body,
+                "timestamp": timestamp_str
+            },
+            "processing": {
+                "category": processing.category if processing else None,
+                "tasks_json": processing.tasks_json if processing else None,
+                "draft_json": processing.draft_json if processing else None
+            } if processing else None
         }
 
 # ==================== Chat Routes ====================
@@ -289,6 +294,67 @@ async def chat_with_email(request: ChatRequest):
         response = llm_service.chat_with_email(email_text, request.user_message)
         
         return {"response": response}
+
+@app.post("/agent/chat")
+async def agent_chat(request: dict):
+    """Agent chat endpoint - handles chat with or without email context"""
+    email_id = request.get("email_id")
+    query = request.get("query") or request.get("user_message", "")
+    
+    if not query:
+        raise HTTPException(status_code=400, detail="Query is required")
+    
+    with get_session() as session:
+        if email_id:
+            email = session.get(Email, email_id)
+            if email:
+                email_text = f"Subject: {email.subject}\n\n{email.body}"
+                response = llm_service.chat_with_email(email_text, query)
+            else:
+                response = "Email not found"
+        else:
+            # General query without email context
+            response = llm_service._call(query) or "LLM unavailable"
+        
+        return {"reply": response}
+
+@app.post("/agent/draft")
+async def agent_generate_draft(request: dict):
+    """Agent draft generation endpoint"""
+    email_id = request.get("email_id")
+    tone = request.get("tone", "polite")
+    
+    if not email_id:
+        raise HTTPException(status_code=400, detail="email_id is required")
+    
+    with get_session() as session:
+        email = session.get(Email, email_id)
+        if not email:
+            raise HTTPException(status_code=404, detail="Email not found")
+        
+        email_text = f"Subject: {email.subject}\n\n{email.body}"
+        draft_data = llm_service.generate_reply(email_text, tone=tone)
+        
+        # Save draft
+        draft = Draft(
+            email_id=email.id,
+            subject=draft_data.get("subject", ""),
+            body=draft_data.get("body", "")
+        )
+        session.add(draft)
+        session.commit()
+        session.refresh(draft)
+        
+        logger.info(f"✅ Generated draft for email {email.id}")
+        
+        return {
+            "draft": {
+                "id": draft.id,
+                "email_id": draft.email_id,
+                "subject": draft.subject,
+                "body": draft.body
+            }
+        }
 
 # ==================== Draft Routes ====================
 
@@ -330,11 +396,21 @@ async def get_all_drafts():
         result = []
         for draft in drafts:
             email = session.get(Email, draft.email_id) if draft.email_id else None
+            
+            # Handle created_at if it exists, otherwise use current time
+            created_at_str = None
+            if hasattr(draft, 'created_at') and draft.created_at:
+                if isinstance(draft.created_at, datetime):
+                    created_at_str = draft.created_at.isoformat()
+                else:
+                    created_at_str = str(draft.created_at)
+            
             result.append({
                 "id": draft.id,
                 "email_id": draft.email_id,
                 "subject": draft.subject,
                 "body": draft.body,
+                "created_at": created_at_str,
                 "original_subject": email.subject if email else None
             })
         
@@ -348,12 +424,89 @@ async def get_draft(draft_id: int):
         if not draft:
             raise HTTPException(status_code=404, detail="Draft not found")
         
+        email = session.get(Email, draft.email_id) if draft.email_id else None
+        
+        # Handle created_at
+        created_at_str = None
+        if hasattr(draft, 'created_at') and draft.created_at:
+            if isinstance(draft.created_at, datetime):
+                created_at_str = draft.created_at.isoformat()
+            else:
+                created_at_str = str(draft.created_at)
+        
         return {
-            "id": draft.id,
-            "email_id": draft.email_id,
-            "subject": draft.subject,
-            "body": draft.body
+            "draft": {
+                "id": draft.id,
+                "email_id": draft.email_id,
+                "subject": draft.subject,
+                "body": draft.body,
+                "created_at": created_at_str
+            },
+            "email": {
+                "id": email.id,
+                "subject": email.subject,
+                "body": email.body,
+                "sender": email.sender,
+                "timestamp": email.timestamp.isoformat() if isinstance(email.timestamp, datetime) else str(email.timestamp)
+            } if email else None
         }
+
+@app.post("/draft/save")
+async def save_draft(request: dict):
+    """Save or update a draft"""
+    email_id = request.get("email_id")
+    subject = request.get("subject", "")
+    body = request.get("body", "")
+    
+    with get_session() as session:
+        draft = Draft(
+            email_id=email_id,
+            subject=subject,
+            body=body
+        )
+        session.add(draft)
+        session.commit()
+        session.refresh(draft)
+        
+        return {
+            "status": "saved",
+            "draft": {
+                "id": draft.id,
+                "email_id": draft.email_id,
+                "subject": draft.subject,
+                "body": draft.body
+            }
+        }
+
+@app.delete("/draft/{draft_id}")
+async def delete_draft(draft_id: int):
+    """Delete a specific draft"""
+    with get_session() as session:
+        draft = session.get(Draft, draft_id)
+        if not draft:
+            raise HTTPException(status_code=404, detail="Draft not found")
+        
+        session.delete(draft)
+        session.commit()
+        
+        return {"status": "deleted", "id": draft_id}
+
+@app.delete("/drafts/batch-delete")
+async def batch_delete_drafts(request: dict):
+    """Delete multiple drafts"""
+    ids = request.get("ids", [])
+    
+    with get_session() as session:
+        deleted_count = 0
+        for draft_id in ids:
+            draft = session.get(Draft, draft_id)
+            if draft:
+                session.delete(draft)
+                deleted_count += 1
+        
+        session.commit()
+        
+        return {"status": "deleted", "count": deleted_count}
 
 # ==================== Prompt Routes ====================
 
@@ -362,9 +515,9 @@ async def get_all_prompts():
     """Get all prompts"""
     with get_session() as session:
         prompts = session.exec(select(Prompt)).all()
-        return {
-            "prompts": [{"key": p.key, "text": p.text} for p in prompts]
-        }
+        # Return as dict with key: text format
+        result = {p.key: p.text for p in prompts}
+        return result
 
 @app.get("/prompt/{key}")
 async def get_prompt(key: str):
@@ -392,6 +545,23 @@ async def update_prompt(key: str, request: PromptUpdateRequest):
         
         logger.info(f"✅ Updated prompt: {key}")
         return {"key": prompt.key, "text": prompt.text}
+
+@app.post("/prompts/update")
+async def update_prompt_legacy(key: str, text: str):
+    """Update a prompt (legacy endpoint for PromptBrain)"""
+    with get_session() as session:
+        prompt = session.get(Prompt, key)
+        if not prompt:
+            prompt = Prompt(key=key, text=text)
+            session.add(prompt)
+        else:
+            prompt.text = text
+        
+        session.commit()
+        session.refresh(prompt)
+        
+        logger.info(f"✅ Updated prompt: {key}")
+        return {"status": "ok", "key": prompt.key}
 
 @app.post("/process/reprocess")
 async def reprocess_emails():

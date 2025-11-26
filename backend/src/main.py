@@ -1,5 +1,6 @@
 # backend/src/main.py
 import os
+import json
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -13,7 +14,6 @@ from pydantic import BaseModel
 from .db import create_db_and_tables, get_session
 from .models import Email, EmailProcessing, Prompt, Draft
 from .services.llm_service import llm_service, _maybe_aclose_client
-from .services.ingestion_service import load_and_process_inbox
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -217,11 +217,12 @@ async def load_mock_emails():
                 sender="team@slack.com",
                 recipients="you@company.com",
                 subject="Your Slack Digest",
-                body="You have 15 unread messages in your workspace. Check out what you missed today!",
+                body="You have 15 unread messages in your workspace. Check out what you missed today! Click here to unsubscribe from these notifications.",
                 timestamp=datetime.now() - timedelta(days=2)
             ),
         ]
         
+        # Add emails to database
         for email in mock_emails:
             session.add(email)
         
@@ -234,12 +235,43 @@ async def load_mock_emails():
         logger.info(f"✅ Loaded {len(mock_emails)} mock emails")
         
         # Now process them with LLM
-        result = load_and_process_inbox(session.get_bind(), llm_service, reset=False)
+        processed = 0
+        errors = []
+        
+        for email in mock_emails:
+            try:
+                email_text = f"Subject: {email.subject}\n\n{email.body}"
+                
+                # Categorize
+                category = llm_service.categorize(email_text)
+                logger.info(f"📧 Email {email.id}: '{email.subject[:50]}...' → {category}")
+                
+                # Extract tasks
+                tasks = llm_service.extract_tasks(email_text)
+                logger.info(f"✅ Extracted {len(tasks)} tasks")
+                
+                # Create processing record
+                processing = EmailProcessing(
+                    email_id=email.id,
+                    category=category,
+                    tasks_json=json.dumps(tasks, ensure_ascii=False),
+                    draft_json=None
+                )
+                session.add(processing)
+                session.commit()
+                
+                processed += 1
+                
+            except Exception as e:
+                logger.exception(f"❌ Error processing email {email.id}: {e}")
+                errors.append(f"email_id={email.id}: {str(e)}")
+                session.rollback()
         
         return {
-            "message": f"Loaded and processed {len(mock_emails)} mock emails",
+            "message": f"Loaded {len(mock_emails)} mock emails",
             "count": len(mock_emails),
-            "processing_result": result
+            "processed": processed,
+            "errors": errors
         }
 
 @app.get("/email/{email_id}")
@@ -567,8 +599,123 @@ async def update_prompt_legacy(key: str, text: str):
 async def reprocess_emails():
     """Reprocess all emails with current prompts"""
     with get_session() as session:
-        result = load_and_process_inbox(session.get_bind(), llm_service, reset=True)
-        return result
+        # Get all emails
+        emails = session.exec(select(Email)).all()
+        
+        logger.info(f"🔄 Reprocessing {len(emails)} emails...")
+        
+        processed = 0
+        errors = []
+        
+        for email in emails:
+            try:
+                email_text = f"Subject: {email.subject}\n\n{email.body}"
+                
+                # Categorize with LLM
+                category = llm_service.categorize(email_text)
+                logger.info(f"📧 Email {email.id}: '{email.subject[:50]}...' → {category}")
+                
+                # Extract tasks
+                tasks = llm_service.extract_tasks(email_text)
+                logger.info(f"✅ Extracted {len(tasks)} tasks from email {email.id}")
+                
+                # Update or create processing record
+                existing = session.exec(
+                    select(EmailProcessing).where(EmailProcessing.email_id == email.id)
+                ).first()
+                
+                if existing:
+                    existing.category = category
+                    existing.tasks_json = json.dumps(tasks, ensure_ascii=False)
+                    session.add(existing)
+                else:
+                    processing = EmailProcessing(
+                        email_id=email.id,
+                        category=category,
+                        tasks_json=json.dumps(tasks, ensure_ascii=False),
+                        draft_json=None
+                    )
+                    session.add(processing)
+                
+                session.commit()
+                processed += 1
+                
+            except Exception as e:
+                logger.exception(f"❌ Error processing email {email.id}: {e}")
+                errors.append(f"email_id={email.id}: {str(e)}")
+                session.rollback()
+        
+        return {
+            "status": "ok",
+            "processed": processed,
+            "total": len(emails),
+            "errors": errors
+        }
+
+@app.post("/process/process-unprocessed")
+async def process_unprocessed_emails():
+    """Process only emails that haven't been processed yet"""
+    with get_session() as session:
+        # Find emails without processing records
+        all_emails = session.exec(select(Email)).all()
+        unprocessed = []
+        
+        for email in all_emails:
+            existing = session.exec(
+                select(EmailProcessing).where(EmailProcessing.email_id == email.id)
+            ).first()
+            if not existing:
+                unprocessed.append(email)
+        
+        logger.info(f"📊 Found {len(unprocessed)} unprocessed emails")
+        
+        if len(unprocessed) == 0:
+            return {
+                "status": "ok",
+                "message": "All emails are already processed",
+                "unprocessed": 0
+            }
+        
+        # Process them
+        processed = 0
+        errors = []
+        
+        for email in unprocessed:
+            try:
+                email_text = f"Subject: {email.subject}\n\n{email.body}"
+                
+                # Categorize
+                category = llm_service.categorize(email_text)
+                logger.info(f"📧 Email {email.id}: '{email.subject[:50]}...' → {category}")
+                
+                # Extract tasks
+                tasks = llm_service.extract_tasks(email_text)
+                logger.info(f"✅ Extracted {len(tasks)} tasks from email {email.id}")
+                
+                # Create processing record
+                processing = EmailProcessing(
+                    email_id=email.id,
+                    category=category,
+                    tasks_json=json.dumps(tasks, ensure_ascii=False),
+                    draft_json=None
+                )
+                session.add(processing)
+                session.commit()
+                
+                processed += 1
+                logger.info(f"✅ Processed email {email.id}")
+                
+            except Exception as e:
+                logger.exception(f"❌ Error processing email {email.id}: {e}")
+                errors.append(f"email_id={email.id}: {str(e)}")
+                session.rollback()
+        
+        return {
+            "status": "ok",
+            "processed": processed,
+            "total_unprocessed": len(unprocessed),
+            "errors": errors
+        }
 
 @app.delete("/admin/clear-emails")
 async def clear_all_emails():

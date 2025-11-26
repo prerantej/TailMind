@@ -138,13 +138,22 @@ async def get_inbox():
                 select(EmailProcessing).where(EmailProcessing.email_id == email.id)
             ).first()
             
+            # Handle timestamp - it might be datetime or string
+            timestamp_str = email.timestamp
+            if isinstance(email.timestamp, datetime):
+                timestamp_str = email.timestamp.isoformat()
+            elif isinstance(email.timestamp, str):
+                timestamp_str = email.timestamp
+            else:
+                timestamp_str = str(email.timestamp)
+            
             email_dict = {
                 "id": email.id,
                 "sender": email.sender,
                 "recipients": email.recipients,
                 "subject": email.subject,
                 "body": email.body,
-                "timestamp": email.timestamp.isoformat(),
+                "timestamp": timestamp_str,
                 "category": processing.category if processing else None,
                 "tasks": processing.tasks_json if processing else None,
                 "draft": processing.draft_json if processing else None
@@ -245,13 +254,22 @@ async def get_email_detail(email_id: int):
             select(EmailProcessing).where(EmailProcessing.email_id == email_id)
         ).first()
         
+        # Handle timestamp - it might be datetime or string
+        timestamp_str = email.timestamp
+        if isinstance(email.timestamp, datetime):
+            timestamp_str = email.timestamp.isoformat()
+        elif isinstance(email.timestamp, str):
+            timestamp_str = email.timestamp
+        else:
+            timestamp_str = str(email.timestamp)
+        
         return {
             "id": email.id,
             "sender": email.sender,
             "recipients": email.recipients,
             "subject": email.subject,
             "body": email.body,
-            "timestamp": email.timestamp.isoformat(),
+            "timestamp": timestamp_str,
             "category": processing.category if processing else None,
             "tasks": processing.tasks_json if processing else None,
             "draft": processing.draft_json if processing else None

@@ -6,3 +6,4 @@ python-dotenv
 requests>=2.28.0   # used for HTTP fallback when SDK missing
 google-genai
 psycopg[binary]
+psycopg2

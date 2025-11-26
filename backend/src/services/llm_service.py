@@ -165,6 +165,7 @@ class LLMService:
                     )
                     text = _extract_text_from_response(response)
                     if text:
+                        logger.debug(f"✅ LLM response (first 100 chars): {text[:100]}")
                         return text
                 except Exception as e:
                     logger.debug(f"client.models.generate_content failed: {e}")
@@ -173,7 +174,9 @@ class LLMService:
             if GENAI_IMPL == "google-generativeai" and hasattr(self.client, "generate_content"):
                 try:
                     response = self.client.generate_content(prompt)
-                    return getattr(response, "text", str(response))
+                    text = getattr(response, "text", str(response))
+                    logger.debug(f"✅ LLM response (first 100 chars): {text[:100]}")
+                    return text
                 except Exception as e:
                     logger.debug(f"legacy generate_content failed: {e}")
 
@@ -185,7 +188,7 @@ class LLMService:
             return None
 
     # ------------------------------
-    # Categorization
+    # Categorization - IMPROVED
     # ------------------------------
     def categorize(self, email_text: str, prompt: Optional[str] = None) -> str:
         if prompt is None:
@@ -193,11 +196,25 @@ class LLMService:
             if db_prompt:
                 final_prompt = db_prompt + "\n\nEMAIL:\n" + email_text
             else:
-                final_prompt = (
-                    "Reply with ONE LABEL ONLY.\n"
-                    "Valid labels: Important, Newsletter, Spam, To-Do.\n\n"
-                    f"Email:\n{email_text}"
-                )
+                # IMPROVED DEFAULT PROMPT
+                final_prompt = f"""You are an expert email classifier. Analyze this email and categorize it into EXACTLY ONE of these categories:
+
+1. **Important** - Urgent work matters, meeting requests, deadlines, boss emails, client requests, time-sensitive action items
+2. **Newsletter** - Marketing emails, subscriptions, updates, digests, promotional content, automated notifications with "unsubscribe" links
+3. **Spam** - Unwanted promotions, suspicious offers, scams, "buy now" messages, too-good-to-be-true deals
+4. **To-Do** - Regular work tasks, follow-ups, non-urgent requests, information requests, routine work items
+
+IMPORTANT RULES:
+- Respond with ONLY ONE WORD: Important, Newsletter, Spam, or To-Do
+- No explanations, no extra text, just the category name
+- If an email has "unsubscribe" or is from a newsletter service, it's Newsletter
+- If an email is from a boss or mentions deadlines/urgency, it's Important
+- If an email has promotional language like "buy now" or "limited time", check if it's legitimate (Important/To-Do) or spam
+
+EMAIL TO CATEGORIZE:
+{email_text}
+
+CATEGORY:"""
         else:
             final_prompt = prompt + "\n\nEMAIL:\n" + email_text
 
@@ -205,21 +222,47 @@ class LLMService:
         if not resp:
             return self._heuristic_categorize(email_text)
 
-        label = resp.strip().splitlines()[0].strip().split()[0]
-        return label
+        # Extract and normalize category
+        category = resp.strip().splitlines()[0].strip().split()[0]
+        category_lower = category.lower()
+        
+        if "important" in category_lower:
+            return "Important"
+        elif "newsletter" in category_lower:
+            return "Newsletter"
+        elif "spam" in category_lower:
+            return "Spam"
+        elif "to-do" in category_lower or "todo" in category_lower:
+            return "To-Do"
+        else:
+            logger.warning(f"⚠️ Unknown category '{category}', using heuristic")
+            return self._heuristic_categorize(email_text)
 
     def _heuristic_categorize(self, text: str) -> str:
+        """IMPROVED heuristic categorization"""
         t = text.lower()
-        if "newsletter" in t or "unsubscribe" in t:
+        
+        # Newsletter indicators (check first - most specific)
+        if any(word in t for word in ["unsubscribe", "newsletter", "digest", "weekly", "subscription", "mailing list"]):
+            logger.info("📧 Heuristic: Newsletter (unsubscribe/newsletter keywords)")
             return "Newsletter"
-        if "meeting" in t or "scheduled" in t:
+        
+        # Important indicators
+        if any(word in t for word in ["urgent", "asap", "deadline", "meeting", "scheduled", "boss", "client", "important"]):
+            logger.info("📧 Heuristic: Important (urgency keywords)")
             return "Important"
-        if "buy now" in t or "free" in t:
+        
+        # Spam indicators
+        if any(word in t for word in ["buy now", "limited time", "free", "winner", "claim", "click here now"]):
+            logger.info("📧 Heuristic: Spam (promotional keywords)")
             return "Spam"
+        
+        # Default to To-Do
+        logger.info("📧 Heuristic: To-Do (default)")
         return "To-Do"
 
     # ------------------------------
-    # Task Extraction
+    # Task Extraction - IMPROVED
     # ------------------------------
     def extract_tasks(self, email_text: str, prompt: Optional[str] = None):
         if prompt is None:
@@ -227,11 +270,19 @@ class LLMService:
             if db_prompt:
                 final_prompt = db_prompt + "\n\nEMAIL:\n" + email_text
             else:
-                final_prompt = (
-                    "Extract tasks from the email.\n"
-                    "Return STRICT JSON array.\n\n"
-                    f"Email:\n{email_text}"
-                )
+                # IMPROVED DEFAULT PROMPT
+                final_prompt = f"""You are a task extraction assistant. Analyze this email and extract ALL actionable tasks or to-dos.
+
+RULES:
+- Return a JSON array of tasks
+- Each task should have: "task" (description), "deadline" (date if mentioned, else null)
+- Be specific and clear in task descriptions
+- If NO tasks are found, return an empty array: []
+
+EMAIL:
+{email_text}
+
+TASKS (JSON array):"""
         else:
             final_prompt = prompt + "\n\nEMAIL:\n" + email_text
 
@@ -244,10 +295,10 @@ class LLMService:
             return parsed
         if isinstance(parsed, dict):
             return [parsed]
-        return resp
+        return []
 
     # ------------------------------
-    # Draft Reply
+    # Draft Reply - IMPROVED
     # ------------------------------
     def generate_reply(self, email_text: str, prompt: Optional[str] = None, tone: str = "polite"):
         if prompt is None:
@@ -255,16 +306,25 @@ class LLMService:
             if db_prompt:
                 final_prompt = db_prompt + "\n\nEMAIL:\n" + email_text
             else:
-                final_prompt = (
-                    f"Write a {tone} reply. Return JSON: {{'subject':'', 'body':''}}.\n\n"
-                    f"Email:\n{email_text}"
-                )
+                # IMPROVED DEFAULT PROMPT
+                final_prompt = f"""You are a professional email assistant. Write a {tone} reply to this email.
+
+Return ONLY a JSON object with this exact format:
+{{
+  "subject": "Re: [original subject]",
+  "body": "your reply here"
+}}
+
+EMAIL TO REPLY TO:
+{email_text}
+
+REPLY (JSON only):"""
         else:
             final_prompt = prompt + "\n\nEMAIL:\n" + email_text
 
         resp = self._call(final_prompt)
         if not resp:
-            return {"subject": "", "body": "Thanks — will follow up soon."}
+            return {"subject": "", "body": "Thanks for your email. I'll get back to you soon."}
 
         parsed = safe_json_extract(resp)
         if isinstance(parsed, dict):
@@ -272,15 +332,20 @@ class LLMService:
         return {"subject": "", "body": resp.strip()}
 
     # ------------------------------
-    # Chat with Email Context
+    # Chat with Email Context - IMPROVED
     # ------------------------------
     def chat_with_email(self, email_text: str, user_query: str, prompt: Optional[str] = None):
         if prompt is None:
-            final_prompt = (
-                "You are an intelligent assistant.\n"
-                "Use ONLY the email content to answer.\n\n"
-                f"Email:\n{email_text}\n\nUser:\n{user_query}"
-            )
+            # IMPROVED DEFAULT PROMPT
+            final_prompt = f"""You are an intelligent email assistant. Answer the user's question based ONLY on the email content provided.
+
+EMAIL CONTENT:
+{email_text}
+
+USER QUESTION:
+{user_query}
+
+ANSWER:"""
         else:
             final_prompt = prompt + "\n" + email_text + "\n\nUser:\n" + user_query
 

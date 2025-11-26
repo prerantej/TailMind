@@ -400,6 +400,37 @@ async def reprocess_emails():
         result = load_and_process_inbox(session.get_bind(), llm_service, reset=True)
         return result
 
+@app.delete("/admin/clear-emails")
+async def clear_all_emails():
+    """Clear all emails and processing data from database"""
+    with get_session() as session:
+        # Delete all email processing records
+        processing_records = session.exec(select(EmailProcessing)).all()
+        for record in processing_records:
+            session.delete(record)
+        
+        # Delete all emails
+        emails = session.exec(select(Email)).all()
+        for email in emails:
+            session.delete(email)
+        
+        # Delete all drafts
+        drafts = session.exec(select(Draft)).all()
+        for draft in drafts:
+            session.delete(draft)
+        
+        session.commit()
+        
+        logger.info("🗑️ Cleared all emails, processing data, and drafts")
+        return {
+            "message": "All emails, processing data, and drafts cleared",
+            "deleted": {
+                "emails": len(emails),
+                "processing": len(processing_records),
+                "drafts": len(drafts)
+            }
+        }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

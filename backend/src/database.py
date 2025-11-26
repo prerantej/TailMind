@@ -1,32 +1,50 @@
-# backend/src/database.py
+# backend/src/db.py
 import os
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
+import logging
+from sqlmodel import SQLModel, create_engine, Session
+from contextlib import contextmanager
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./data/dev.db")
+logger = logging.getLogger(__name__)
 
-# If using SQLite file (local dev), keep check_same_thread and NullPool
-if DATABASE_URL.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
-    engine = create_engine(
-        DATABASE_URL,
-        connect_args=connect_args,
-        poolclass=NullPool,
-    )
+# Get database URL from environment
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    logger.warning("⚠️ DATABASE_URL not set, using SQLite fallback")
+    DATABASE_URL = "sqlite:///./tailmind.db"
 else:
-    # For Postgres (and other production DBs)
-    engine = create_engine(
-        DATABASE_URL,
-        pool_pre_ping=True,
-    )
+    # Render Postgres URLs start with 'postgres://' but SQLAlchemy needs 'postgresql://'
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        logger.info(f"✅ Using PostgreSQL database")
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Create engine with connection pooling
+engine = create_engine(
+    DATABASE_URL,
+    echo=False,  # Set to True for SQL query logging
+    pool_pre_ping=True,  # Verify connections before using them
+    pool_size=10,  # Maximum number of connections to keep open
+    max_overflow=20,  # Maximum number of connections that can be created beyond pool_size
+)
 
-# Optional helper for dependency injection in FastAPI
-def get_session():
-    db = SessionLocal()
+def create_db_and_tables():
+    """Create all database tables"""
     try:
-        yield db
+        SQLModel.metadata.create_all(engine)
+        logger.info("✅ Database tables created successfully")
+    except Exception as e:
+        logger.exception(f"❌ Failed to create database tables: {e}")
+        raise
+
+@contextmanager
+def get_session():
+    """Get a database session (context manager)"""
+    session = Session(engine)
+    try:
+        yield session
+    except Exception as e:
+        session.rollback()
+        logger.exception(f"❌ Database session error: {e}")
+        raise
     finally:
-        db.close()
+        session.close()

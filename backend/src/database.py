@@ -1,4 +1,4 @@
-# backend/src/db.py
+# backend/src/database.py
 import os
 import logging
 from sqlmodel import SQLModel, create_engine, Session

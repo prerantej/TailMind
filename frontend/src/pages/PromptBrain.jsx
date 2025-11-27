@@ -31,7 +31,7 @@ export default function PromptBrain() {
   }
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
+    <div className="bg-neutral-900/70 border border-neutral-800 rounded-2xl p-4 backdrop-blur-sm">
       <div className="mb-6 p-4 bg-neutral-950 border border-neutral-800 rounded-xl">
         <h2 className="text-lg font-semibold text-neutral-100 mb-2">Prompt Brain</h2>
         <p className="text-sm text-neutral-400 leading-relaxed">

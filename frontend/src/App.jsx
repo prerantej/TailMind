@@ -1,4 +1,4 @@
-// src/App.jsx - Fix for chat toggle
+// src/App.jsx
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import SidebarShell from "./components/SidebarShell";
@@ -9,9 +9,8 @@ import DraftDetail from "./pages/DraftDetail";
 import Drafts from "./pages/Drafts";
 import Welcome from "./pages/Welcome";
 import ChatBox, { MobileFloatingWrapper } from "./components/ChatBox";
+import Aurora from "./components/Aurora";
 import { Bot } from "lucide-react";
-
-// ... Keep all your WaveSVGMany component and styles ...
 
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
@@ -21,16 +20,15 @@ export default function App() {
   const refreshInbox = () => setRefreshInboxFlag((f) => f + 1);
   const navigate = useNavigate();
 
-  // columns
+  // Grid columns
   const leftCol = sidebarCollapsed ? "48px" : "260px";
   const rightCol = chatOpen ? "380px" : "48px";
   const gridTemplate = `${leftCol} 1fr ${rightCol}`;
 
+  // Keyboard shortcut for chat
   useEffect(() => {
     function onKey(e) {
-      // Only toggle if 'c' key is pressed and not in an input/textarea
-      if (e.key.toLowerCase() === "c" && 
-          !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+      if (e.key.toLowerCase() === "c" && !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
         e.preventDefault();
         setChatOpen((v) => !v);
       }
@@ -40,18 +38,38 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 relative" style={{ overflowX: "hidden" }}>
-      {/* ... Keep all your wave SVG styles and components ... */}
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 relative overflow-hidden">
+     
+
+      {/* Aurora Effect */ }
       
-      {/* main app grid above waves */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+       <Aurora
+          colorStops={["#7cff67", "#b19eef", "#5227ff"]}
+          blend={0.5}
+          amplitude={1.0}
+          speed={0.5}
+        />
+      </div> 
+
+      {/* Main Content */}
       <div
         className="max-w-[1400px] mx-auto px-4 py-6 grid gap-6 relative"
-        style={{ gridTemplateColumns: gridTemplate, transition: "grid-template-columns 200ms ease", zIndex: 10 }}
+        style={{ 
+          gridTemplateColumns: gridTemplate, 
+          transition: "grid-template-columns 200ms ease", 
+          zIndex: 10 
+        }}
       >
+        {/* Sidebar */}
         <aside className="sticky top-2 h-[95vh] z-20">
-          <SidebarShell initialCollapsed={false} onToggle={(c) => setSidebarCollapsed(c)} />
+          <SidebarShell 
+            initialCollapsed={false} 
+            onToggle={(c) => setSidebarCollapsed(c)} 
+          />
         </aside>
 
+        {/* Main Content Area */}
         <main className="min-h-[80vh] relative z-20">
           <div className="space-y-6">
             <Routes>
@@ -70,9 +88,15 @@ export default function App() {
                 }
               />
 
-              <Route path="/email/:id" element={<EmailDetail emailId={selectedEmailId} />} />
+              <Route 
+                path="/email/:id" 
+                element={<EmailDetail emailId={selectedEmailId} />} 
+              />
 
-              <Route path="/drafts" element={<Drafts onOpenDraft={(id) => navigate(`/draft/${id}`)} />} />
+              <Route 
+                path="/drafts" 
+                element={<Drafts onOpenDraft={(id) => navigate(`/draft/${id}`)} />} 
+              />
 
               <Route path="/draft/:id" element={<DraftDetail />} />
 
@@ -83,10 +107,10 @@ export default function App() {
           </div>
         </main>
 
-        {/* Right chat area */}
+        {/* Chat Area */}
         {chatOpen ? (
           <aside className="sticky top-2 h-[95vh] z-20">
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 h-full shadow-sm">
+            <div className="bg-neutral-900/90 backdrop-blur-sm border border-neutral-800 rounded-2xl p-4 h-full shadow-lg">
               <ChatBox 
                 emailId={selectedEmailId} 
                 onGenerateDraft={() => refreshInbox()} 
@@ -100,7 +124,7 @@ export default function App() {
               <button
                 onClick={() => setChatOpen(true)}
                 aria-label="Open chat (Press 'c')"
-                className="chat-toggle glow mt-4 w-12 h-12 bg-neutral-900 border border-neutral-800 text-neutral-200 shadow-sm flex items-center justify-center rounded-xl group relative"
+                className="mt-4 w-12 h-12 bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 text-neutral-200 shadow-lg flex items-center justify-center rounded-xl group relative hover:bg-neutral-800 transition-all"
                 style={{ borderWidth: "1px" }}
               >
                 <Bot className="w-6 h-6 text-neutral-200" />
@@ -113,8 +137,12 @@ export default function App() {
         )}
       </div>
 
+      {/* Mobile Chat Button */}
       <div className="fixed bottom-6 right-6 lg:hidden z-30">
-        <MobileFloatingWrapper emailId={selectedEmailId} onGenerateDraft={() => refreshInbox()} />
+        <MobileFloatingWrapper 
+          emailId={selectedEmailId} 
+          onGenerateDraft={() => refreshInbox()} 
+        />
       </div>
     </div>
   );

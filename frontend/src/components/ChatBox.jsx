@@ -130,6 +130,56 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* --- Glow styles (scoped here so no external CSS changes required) --- */}
+      <style>{`
+        /* Toggle button base */
+        .chat-toggle {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 18px;
+          background: rgba(30,30,30,0.6);
+          border: 1px solid rgba(255,255,255,0.04);
+          color: #e6eef8;
+          cursor: pointer;
+          transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+        }
+
+        /* Subtle pulse/glow — tuned to be tasteful, not noisy */
+        .chat-toggle.glow {
+          box-shadow:
+            0 0 10px rgba(96,165,250,0.08),
+            0 0 24px rgba(96,165,250,0.06),
+            inset 0 0 12px rgba(96,165,250,0.02);
+          filter: drop-shadow(0 4px 14px rgba(96,165,250,0.06));
+          transform: translateY(-1px);
+          animation: pulseGlow 2000ms infinite ease-in-out;
+        }
+
+        /* Stronger highlight on hover/focus */
+        .chat-toggle:focus,
+        .chat-toggle:hover {
+          transform: translateY(-2px) scale(1.03);
+          box-shadow:
+            0 0 14px rgba(96,165,250,0.12),
+            0 0 36px rgba(96,165,250,0.08),
+            inset 0 0 14px rgba(96,165,250,0.03);
+        }
+
+        @keyframes pulseGlow {
+          0%   { box-shadow: 0 0 8px rgba(96,165,250,0.06), 0 0 20px rgba(96,165,250,0.04); }
+          50%  { box-shadow: 0 0 18px rgba(96,165,250,0.12), 0 0 36px rgba(96,165,250,0.08); }
+          100% { box-shadow: 0 0 8px rgba(96,165,250,0.06), 0 0 20px rgba(96,165,250,0.04); }
+        }
+
+        /* Respect reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+          .chat-toggle.glow { animation: none; transform: none; box-shadow: 0 0 6px rgba(96,165,250,0.04); }
+        }
+      `}</style>
+
       {/* Header: title + toggle button in top-right */}
       <div className="mb-3 flex items-start justify-between">
         <div>
@@ -144,9 +194,11 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
           <button
             onClick={() => onToggleOpen && onToggleOpen()}
             aria-label="Collapse chat"
-            className="inline-flex items-center justify-center w-9 h-9 rounded-3xl bg-neutral-800 border border-neutral-700 text-neutral-200 hover:bg-neutral-780"
+            aria-pressed="false"
+            className="chat-toggle glow"
+            title="Collapse chat"
           >
-            <span className="text-xl transform">{">"}</span>
+            <span aria-hidden className="text-xl transform">{'>'}</span>
           </button>
         </div>
       </div>
@@ -165,7 +217,7 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
 
       {/* Input row */}
       <div className="flex gap-2 items-center">
-        <button onClick={generateDraft} disabled={loading} className="px-3 py-2 rounded-3xl border text-xs">
+        <button onClick={generateDraft} disabled={loading} className="px-3 py-2 rounded-3xl border border-rose-600 text-xs">
           Generate Draft
         </button>
 

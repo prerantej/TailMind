@@ -7,8 +7,8 @@ export default function Welcome() {
     <div className="h-[70vh] flex items-center justify-center">
       <div className="text-center max-w-2xl">
         
-        <h1 className="text-5xl font-semibold mb-2">TailMind</h1>
-        <p className="text-neutral-400 mb-6 gap-3">
+        <h1 className="text-5xl font-extrabold mb-2 font-sans">TailMind</h1>
+        <p className="text-white font-semibold mb-6 gap-3">
           Smart inbox, AI agent & prompt brain — manage emails, generate drafts, and extract tasks quickly.
         </p>
 
@@ -21,7 +21,7 @@ export default function Welcome() {
           </Link>
           <Link 
             to="/prompt-brain" 
-            className="px-4 py-2 border border-neutral-800 hover:bg-neutral-900 rounded-md text-sm text-neutral-200 transition-colors"
+            className="px-4 py-2 border bg-neutral-800 border-neutral-800 hover:bg-neutral-900 rounded-md text-sm text-neutral-200 transition-colors"
           >
             Edit Prompts
           </Link>

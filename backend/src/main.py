@@ -352,41 +352,47 @@ async def agent_chat(request: dict):
 
 @app.post("/agent/draft")
 async def agent_generate_draft(request: dict):
-    """Agent draft generation endpoint"""
+    """Agent draft generation endpoint - preview by default; save only if 'save' true."""
     email_id = request.get("email_id")
     tone = request.get("tone", "polite")
-    
+    save_flag = bool(request.get("save", False))
+
     if not email_id:
         raise HTTPException(status_code=400, detail="email_id is required")
-    
+
     with get_session() as session:
         email = session.get(Email, email_id)
         if not email:
             raise HTTPException(status_code=404, detail="Email not found")
-        
+
         email_text = f"Subject: {email.subject}\n\n{email.body}"
         draft_data = llm_service.generate_reply(email_text, tone=tone)
-        
-        # Save draft
-        draft = Draft(
-            email_id=email.id,
-            subject=draft_data.get("subject", ""),
-            body=draft_data.get("body", "")
-        )
-        session.add(draft)
-        session.commit()
-        session.refresh(draft)
-        
-        logger.info(f"✅ Generated draft for email {email.id}")
-        
-        return {
-            "draft": {
-                "id": draft.id,
-                "email_id": draft.email_id,
-                "subject": draft.subject,
-                "body": draft.body
-            }
+
+        # Build response payload (preview)
+        draft_payload = {
+            "email_id": email.id,
+            "subject": draft_data.get("subject", f"Re: {email.subject}"),
+            "body": draft_data.get("body", "")
         }
+
+        if save_flag:
+            # Persist only if requested explicitly
+            draft = Draft(
+                email_id=email.id,
+                subject=draft_payload["subject"],
+                body=draft_payload["body"]
+            )
+            session.add(draft)
+            session.commit()
+            session.refresh(draft)
+            draft_payload["id"] = draft.id
+            draft_payload["saved"] = True
+        else:
+            draft_payload["saved"] = False
+
+        logger.info(f"Generated draft preview for email {email.id} (saved={draft_payload['saved']})")
+
+        return {"draft": draft_payload}
 
 # ==================== Draft Routes ====================
 

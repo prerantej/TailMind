@@ -85,10 +85,14 @@ def chat_agent(payload: ChatRequest, request: Request):
 
 
 @router.post("/draft")
-def generate_draft(req: DraftRequest, request: Request):
-    # FIX: Do NOT call llm()
+def generate_draft(req: DraftRequest, request: Request, save: bool = Query(False)):
+    """
+    Generate a draft for an email.
+    By default this returns a preview and DOES NOT save to DB.
+    If you pass ?save=true (or save=True in query) it will persist.
+    """
     llm_service_instance = llm
-    
+
     session = get_session()
     try:
         email = session.get(Email, req.email_id)
@@ -100,28 +104,34 @@ def generate_draft(req: DraftRequest, request: Request):
         if p:
             prompt_text = p.text
 
-        # FIX: use instance
+        # Use the llm instance to generate the draft content
         draft_obj = llm_service_instance.generate_reply(
             email.body, prompt=prompt_text, tone=req.tone
         )
 
-        d = Draft(
-            email_id=email.id,
-            subject=draft_obj.get("subject") or f"Re: {email.subject}",
-            body=draft_obj.get("body") or "",
-        )
-        session.add(d)
-        session.commit()
-        session.refresh(d)
-
-        return {
-            "draft": {
-                "id": d.id,
-                "email_id": d.email_id,
-                "subject": d.subject,
-                "body": d.body,
-            }
+        # Build draft response
+        response_draft = {
+            "email_id": email.id,
+            "subject": draft_obj.get("subject") or f"Re: {email.subject}",
+            "body": draft_obj.get("body") or "",
         }
+
+        # Persist only if save flag is true
+        if save:
+            d = Draft(
+                email_id=email.id,
+                subject=response_draft["subject"],
+                body=response_draft["body"],
+            )
+            session.add(d)
+            session.commit()
+            session.refresh(d)
+            response_draft["id"] = d.id
+            response_draft["saved"] = True
+        else:
+            response_draft["saved"] = False
+
+        return {"draft": response_draft}
 
     except HTTPException:
         raise

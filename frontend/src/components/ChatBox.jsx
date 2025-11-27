@@ -80,6 +80,7 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
         email_subject: currentEmail?.subject,
         email_body: currentEmail?.body,
         tone: "friendly",
+        save: false 
       });
       const draft = res.data?.draft;
       if (draft) {

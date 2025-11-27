@@ -70,7 +70,7 @@ export default function Drafts({ onOpenDraft }) {
   }
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 backdrop-blur-sm">
+    <div className="bg-neutral-900/70 border border-neutral-800 rounded-2xl p-4 backdrop-blur-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Drafts</h3>
 

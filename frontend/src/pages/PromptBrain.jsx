@@ -32,7 +32,17 @@ export default function PromptBrain() {
 
   return (
     <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4">
-      {["categorization", "action_extraction", "auto_reply"].map((k) => (
+      <div className="mb-6 p-4 bg-neutral-950 border border-neutral-800 rounded-xl">
+        <h2 className="text-lg font-semibold text-neutral-100 mb-2">Prompt Brain</h2>
+        <p className="text-sm text-neutral-400 leading-relaxed">
+          These prompts act as the <span className="text-neutral-300 font-medium">“brain”</span> of your AI email agent.
+          You can customize how TailMind understands, analyzes, and responds to your emails.
+          Updating a prompt immediately changes how the agent categorizes messages,
+          extracts tasks, and writes replies — making the system adapt to <span className="text-neutral-300 font-medium">your personal workflow</span>.
+        </p>
+      </div>
+
+      {["Categorization", "Action Extraction", "Auto Reply"].map((k) => (
         <div key={k} className="mb-4">
           <label className="block text-sm font-medium text-neutral-300 mb-2">{k.replace("_", " ")}</label>
           <textarea

@@ -1,15 +1,17 @@
 // src/components/ChatBox.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
+import ToggleButton from "./ToggleButton";
 
 /**
  * ChatBox (desktop) with an internal top-right toggle button.
  * Props:
  *  - emailId
- *  - onGenerateDraft
- *  - onToggleOpen  <- callback to collapse the panel (App passes setChatOpen(false))
+ *  - onGenerateDraft (callback to refresh parent when a draft is saved)
+ *  - onToggleOpen (callback to collapse the panel — parent can toggle)
+ *  - isOpen (optional boolean; if provided, component will use this as source of truth)
  */
-export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
+export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen, isOpen }) {
   const [currentEmail, setCurrentEmail] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -19,6 +21,10 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
   const [draftBody, setDraftBody] = useState("");
   const [draftEmailId, setDraftEmailId] = useState(null);
   const scrollRef = useRef();
+
+  // Local open fallback if parent doesn't control state
+  const [localOpen, setLocalOpen] = useState(true);
+  const openState = typeof isOpen === "boolean" ? isOpen : localOpen;
 
   useEffect(() => {
     setMessages([]);
@@ -42,6 +48,13 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, draftEditorOpen]);
 
+  function handleToggleClick() {
+    // If parent provided a callback, call it (toggle intent)
+    if (onToggleOpen) onToggleOpen();
+    // Update local fallback state so component behaves standalone
+    setLocalOpen((v) => !v);
+  }
+
   async function sendQuery() {
     if (!input.trim()) return;
     const userText = input.trim();
@@ -56,7 +69,6 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
         email_body: currentEmail?.body || null,
         query: userText,
       };
-      console.log("Chat payload:", payload);
       const res = await api.post("/agent/chat", payload);
       const reply = res.data?.reply || "No reply.";
       setMessages((m) => [...m, { role: "assistant", text: reply }]);
@@ -80,7 +92,7 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
         email_subject: currentEmail?.subject,
         email_body: currentEmail?.body,
         tone: "friendly",
-        save: false 
+        save: false, // explicit preview-only
       });
       const draft = res.data?.draft;
       if (draft) {
@@ -131,56 +143,6 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* --- Glow styles (scoped here so no external CSS changes required) --- */}
-      <style>{`
-        /* Toggle button base */
-        .chat-toggle {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 36px;
-          height: 36px;
-          border-radius: 18px;
-          background: rgba(30,30,30,0.6);
-          border: 1px solid rgba(255,255,255,0.04);
-          color: #e6eef8;
-          cursor: pointer;
-          transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
-        }
-
-        /* Subtle pulse/glow — tuned to be tasteful, not noisy */
-        .chat-toggle.glow {
-          box-shadow:
-            0 0 10px rgba(96,165,250,0.08),
-            0 0 24px rgba(96,165,250,0.06),
-            inset 0 0 12px rgba(96,165,250,0.02);
-          filter: drop-shadow(0 4px 14px rgba(96,165,250,0.06));
-          transform: translateY(-1px);
-          animation: pulseGlow 2000ms infinite ease-in-out;
-        }
-
-        /* Stronger highlight on hover/focus */
-        .chat-toggle:focus,
-        .chat-toggle:hover {
-          transform: translateY(-2px) scale(1.03);
-          box-shadow:
-            0 0 14px rgba(96,165,250,0.12),
-            0 0 36px rgba(96,165,250,0.08),
-            inset 0 0 14px rgba(96,165,250,0.03);
-        }
-
-        @keyframes pulseGlow {
-          0%   { box-shadow: 0 0 8px rgba(96,165,250,0.06), 0 0 20px rgba(96,165,250,0.04); }
-          50%  { box-shadow: 0 0 18px rgba(96,165,250,0.12), 0 0 36px rgba(96,165,250,0.08); }
-          100% { box-shadow: 0 0 8px rgba(96,165,250,0.06), 0 0 20px rgba(96,165,250,0.04); }
-        }
-
-        /* Respect reduced motion */
-        @media (prefers-reduced-motion: reduce) {
-          .chat-toggle.glow { animation: none; transform: none; box-shadow: 0 0 6px rgba(96,165,250,0.04); }
-        }
-      `}</style>
-
       {/* Header: title + toggle button in top-right */}
       <div className="mb-3 flex items-start justify-between">
         <div>
@@ -190,17 +152,15 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
           </div>
         </div>
 
-        {/* Toggle button: uses '>' glyph like shadcn minimal style */}
+        {/* Toggle button */}
         <div className="ml-4">
-          <button
-            onClick={() => onToggleOpen && onToggleOpen()}
-            aria-label="Collapse chat"
-            aria-pressed="false"
-            className="chat-toggle glow"
-            title="Collapse chat"
-          >
-            <span aria-hidden className="text-xl transform">{'>'}</span>
-          </button>
+          <ToggleButton
+            icon={<span className="text-xl select-none">{openState ? ">" : "<"}</span>}
+            onClick={handleToggleClick}
+            glow={!openState} // glow when collapsed
+            title={openState ? "Collapse chat" : "Open chat"}
+            size={44}
+          />
         </div>
       </div>
 
@@ -265,7 +225,7 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen }) {
   );
 }
 
-/* ---------- Mobile floating drawer (unchanged) ---------- */
+/* ---------- Mobile floating drawer ---------- */
 
 function MobileChatStandalone({ emailId }) {
   const [messages, setMessages] = useState([]);

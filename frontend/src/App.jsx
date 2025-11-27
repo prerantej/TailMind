@@ -10,6 +10,7 @@ import Drafts from "./pages/Drafts";
 import Welcome from "./pages/Welcome";
 import ChatBox, { MobileFloatingWrapper } from "./components/ChatBox";
 import Aurora from "./components/Aurora";
+import ToggleButton from "./components/ToggleButton";
 import { Bot } from "lucide-react";
 
 export default function App() {
@@ -39,33 +40,30 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 relative overflow-hidden">
-     
-
-      {/* Aurora Effect */ }
-      
+      {/* Aurora Effect */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-       <Aurora
+        <Aurora
           colorStops={["#7cff67", "#b19eef", "#5227ff"]}
           blend={0.5}
           amplitude={1.0}
           speed={0.5}
         />
-      </div> 
+      </div>
 
       {/* Main Content */}
       <div
         className="max-w-[1400px] mx-auto px-4 py-6 grid gap-6 relative"
-        style={{ 
-          gridTemplateColumns: gridTemplate, 
-          transition: "grid-template-columns 200ms ease", 
-          zIndex: 10 
+        style={{
+          gridTemplateColumns: gridTemplate,
+          transition: "grid-template-columns 200ms ease",
+          zIndex: 10
         }}
       >
         {/* Sidebar */}
         <aside className="sticky top-2 h-[95vh] z-20">
-          <SidebarShell 
-            initialCollapsed={false} 
-            onToggle={(c) => setSidebarCollapsed(c)} 
+          <SidebarShell
+            initialCollapsed={false}
+            onToggle={(c) => setSidebarCollapsed(c)}
           />
         </aside>
 
@@ -88,14 +86,14 @@ export default function App() {
                 }
               />
 
-              <Route 
-                path="/email/:id" 
-                element={<EmailDetail emailId={selectedEmailId} />} 
+              <Route
+                path="/email/:id"
+                element={<EmailDetail emailId={selectedEmailId} />}
               />
 
-              <Route 
-                path="/drafts" 
-                element={<Drafts onOpenDraft={(id) => navigate(`/draft/${id}`)} />} 
+              <Route
+                path="/drafts"
+                element={<Drafts onOpenDraft={(id) => navigate(`/draft/${id}`)} />}
               />
 
               <Route path="/draft/:id" element={<DraftDetail />} />
@@ -111,27 +109,24 @@ export default function App() {
         {chatOpen ? (
           <aside className="sticky top-2 h-[95vh] z-20">
             <div className="bg-neutral-900/90 backdrop-blur-sm border border-neutral-800 rounded-2xl p-4 h-full shadow-lg">
-              <ChatBox 
-                emailId={selectedEmailId} 
-                onGenerateDraft={() => refreshInbox()} 
-                onToggleOpen={() => setChatOpen(false)} 
+              <ChatBox
+                emailId={selectedEmailId}
+                onGenerateDraft={() => refreshInbox()}
+                onToggleOpen={() => setChatOpen(false)}
+                isOpen={chatOpen}
               />
             </div>
           </aside>
         ) : (
           <aside className="sticky top-2 h-[95vh] flex items-start z-20">
             <div className="w-full flex items-start lg:items-center justify-center">
-              <button
+              <ToggleButton
+                icon={<Bot className="w-6 h-6 text-neutral-200" />}
                 onClick={() => setChatOpen(true)}
-                aria-label="Open chat (Press 'c')"
-                className="mt-4 w-12 h-12 bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 text-neutral-200 shadow-lg flex items-center justify-center rounded-xl group relative hover:bg-neutral-800 transition-all"
-                style={{ borderWidth: "1px" }}
-              >
-                <Bot className="w-6 h-6 text-neutral-200" />
-                <span className="pointer-events-none absolute -top-10 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ease-out bg-neutral-800 border border-neutral-700 text-xs text-neutral-200 px-2 py-1 rounded-md whitespace-nowrap">
-                  Open chat (c)
-                </span>
-              </button>
+                glow={true} // glow when closed
+                title="Open chat (c)"
+                size={48}
+              />
             </div>
           </aside>
         )}
@@ -139,9 +134,9 @@ export default function App() {
 
       {/* Mobile Chat Button */}
       <div className="fixed bottom-6 right-6 lg:hidden z-30">
-        <MobileFloatingWrapper 
-          emailId={selectedEmailId} 
-          onGenerateDraft={() => refreshInbox()} 
+        <MobileFloatingWrapper
+          emailId={selectedEmailId}
+          onGenerateDraft={() => refreshInbox()}
         />
       </div>
     </div>

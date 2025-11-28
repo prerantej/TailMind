@@ -13,8 +13,6 @@ import { InboxIcon, ChatBubbleLeftRightIcon, SparklesIcon, DocumentTextIcon } fr
  * Behavior:
  *  - Expanded: full sidebar with top-right triple-bar button (≡)
  *  - Collapsed: small fixed circular button (≡) at top-left (like chat)
- *
- * Note: when collapsed we call onToggle(true) so parent can update layout.
  */
 const items = [
   { key: "agent", label: "Agent", to: "/", Icon: ChatBubbleLeftRightIcon },
@@ -37,8 +35,6 @@ export default function SidebarShell({ initialCollapsed = false, onToggle = null
   // Collapsed view: fixed round button (behaves like chat button)
   if (collapsed) {
     return (
-      // fixed so it stays visible like the chat button; 
-      // grid column will be adjusted by parent (App) to 48px so center shifts left
       <div className="fixed top-6 left-6 z-50 lg:relative lg:top-0 lg:left-0">
         <button
           onClick={toggle}
@@ -71,8 +67,13 @@ export default function SidebarShell({ initialCollapsed = false, onToggle = null
 
       <div>
         <div className="mb-6">
-          <div className="text-2xl font-semibold">TailMind</div>
-          <div className="text-xs text-neutral-400">Smart inbox & agent</div>
+          {/* Title now navigates to the Agent (home) route */}
+          <NavLink to="/" className="group inline-block no-underline">
+            <div className="text-2xl font-semibold cursor-pointer group-hover:opacity-95 transition-opacity">
+              TailMind
+            </div>
+            <div className="text-xs text-neutral-400">Smart inbox & agent</div>
+          </NavLink>
         </div>
 
         <nav className="space-y-1">
@@ -94,14 +95,28 @@ export default function SidebarShell({ initialCollapsed = false, onToggle = null
       </div>
 
       <div>
+        {/* Status button: added glowing green dot */}
         <button
           onClick={() => {}}
-          className="w-full text-left px-3 py-2 rounded-lg bg-neutral-850 hover:bg-neutral-800 text-sm"
+          className="w-full text-left px-3 py-2 rounded-lg bg-neutral-850 hover:bg-neutral-800 text-sm flex items-center gap-3"
           aria-hidden
           style={{ borderWidth: "1px" }}
         >
-          <div className="text-xs text-neutral-400">Status</div>
-          <div className="text-sm">Connected</div>
+          <div className="flex flex-col w-full">
+            <div className="text-xs text-neutral-400">Status</div>
+            <div className="text-sm flex items-center gap-3">
+              {/* Green dot with pulse + subtle ring to emulate glow */}
+              <span>Connected</span>
+              <span
+                aria-hidden
+                className="inline-block w-1 h-1 rounded-full animate-pulse"
+                style={{
+                  backgroundColor: "#7cff67",
+                  boxShadow: "0 0 10px rgba(124, 255, 103, 0.45)",
+                }}
+              />
+            </div>
+          </div>
         </button>
       </div>
     </aside>

@@ -25,7 +25,7 @@ export default function Welcome() {
 
         {/* Subtitle */}
         <BlurText
-          text="Smart inbox, AI agent & prompt brain — manage emails, generate drafts, and extract tasks quickly."
+          text="Smart inbox, AI agent & prompt brain - manage emails, generate drafts, and extract tasks quickly."
           delay={100}
           animateBy="words"
           direction="top"

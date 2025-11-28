@@ -1,10 +1,9 @@
-// src/pages/Inbox.jsx
 import React, { useEffect, useState } from "react";
 import { api, formatDate } from "../lib/api";
 import { useNavigate } from "react-router-dom";
 
 /**
- * Inbox using shadcn-style primitives (Card-like layout, Checkbox, Badge)
+ * Inbox using shadcn-style primitives (Card-like layout, Badge)
  * Category color mapping:
  *  - Important => red
  *  - To-Do => yellow
@@ -32,7 +31,6 @@ function categoryClasses(category) {
 export default function Inbox({ onSelectEmail, refreshFlag }) {
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [selectedIds, setSelectedIds] = useState({});
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -85,15 +83,7 @@ export default function Inbox({ onSelectEmail, refreshFlag }) {
     }
   }
 
-  function toggleSelect(id) {
-    setSelectedIds((prev) => {
-      const copy = { ...prev };
-      if (copy[id]) delete copy[id];
-      else copy[id] = true;
-      return copy;
-    });
-  }
-
+  // selection checkboxes were removed intentionally (no per-email select)
   function openEmail(e) {
     onSelectEmail && onSelectEmail(e.id);
     navigate(`/email/${e.id}`);
@@ -133,7 +123,7 @@ export default function Inbox({ onSelectEmail, refreshFlag }) {
       <div className="overflow-auto space-y-3 max-h-[80vh]">
         {loading && (
           <div className="text-sm text-neutral-400 flex items-center gap-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-neutral-400 border-t-transparent"></div>
+            <div className="animate-spin rounded-full h-4 w-4 border-1 border-neutral-400 border-t-transparent"></div>
             Loading emails...
           </div>
         )}
@@ -151,20 +141,6 @@ export default function Inbox({ onSelectEmail, refreshFlag }) {
             className="p-3 rounded-xl border border-neutral-800 hover:border-neutral-700 hover:shadow-sm bg-neutral-900/50 flex gap-3 transition-all cursor-pointer"
             onClick={() => openEmail(e)}
           >
-            <div className="flex-shrink-0 pt-1">
-              <input
-                type="checkbox"
-                checked={!!selectedIds[e.id]}
-                onChange={(evt) => {
-                  evt.stopPropagation();
-                  toggleSelect(e.id);
-                }}
-                onClick={(evt) => evt.stopPropagation()}
-                className="w-4 h-4 rounded bg-neutral-800 border-neutral-700 cursor-pointer"
-                aria-label={`Select email ${e.subject}`}
-              />
-            </div>
-
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-start mb-2">
                 <div className="min-w-0 flex-1">

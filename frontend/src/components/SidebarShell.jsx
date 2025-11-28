@@ -109,7 +109,7 @@ export default function SidebarShell({ initialCollapsed = false, onToggle = null
               <span>Connected</span>
               <span
                 aria-hidden
-                className="inline-block w-1 h-1 rounded-full animate-pulse"
+                className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
                 style={{
                   backgroundColor: "#7cff67",
                   boxShadow: "0 0 10px rgba(124, 255, 103, 0.45)",

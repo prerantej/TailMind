@@ -26,11 +26,11 @@ export default function Welcome() {
         {/* Subtitle */}
         <BlurText
           text="Smart inbox, AI agent & prompt brain - manage emails, generate drafts, and extract tasks quickly."
-          delay={100}
+          delay={150}
           animateBy="words"
           direction="top"
           onAnimationComplete={handleAnimationComplete}
-          className="text-lg md:text-2xl text-neutral-300 mb-10 leading-relaxed"
+          className="text-lg md:text-2xl text-neutral-300 mb-10 leading-relaxed "
         />
 
         {/* Buttons */}

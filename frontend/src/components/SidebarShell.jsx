@@ -55,7 +55,7 @@ export default function SidebarShell({ initialCollapsed = false, onToggle = null
 
   // Expanded view: full sidebar with top-right triple-bar button
   return (
-    <aside className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 h-full flex flex-col justify-between relative">
+    <aside className="bg-neutral-900/70 border border-neutral-800 rounded-2xl p-5 h-full flex flex-col justify-between relative">
       {/* top-right toggle */}
       <div className="absolute top-3 right-3">
         <button

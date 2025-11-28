@@ -36,6 +36,22 @@ Inbox, email detail view, draft manager, chatbox.
 
 ---
 
+## 📸 Screenshots
+
+### **Welcome Page**
+<img src="./screenshots/Welcome.jpeg" width="700"/>
+
+### **Inbox View**
+<img src="./screenshots/Inbox.jpeg" width="700"/>
+
+### **Prompt Brain**
+<img src="./screenshots/PromptBrain.jpeg" width="700"/>
+
+### **Agent Chatbot**
+<img src="./screenshots/Chatbot.jpeg" width="700"/>
+
+### **Drafts Management**
+<img src="./screenshots/Drafts.jpeg" width="700"/>
 
 
 ---

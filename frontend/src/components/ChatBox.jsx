@@ -178,7 +178,7 @@ export default function ChatBox({ emailId, onGenerateDraft, onToggleOpen, isOpen
 
       {/* Input row */}
       <div className="flex gap-2 items-center">
-        <button onClick={generateDraft} disabled={loading} className="px-3 py-2 rounded-3xl border border-rose-600 text-xs">
+        <button onClick={generateDraft} disabled={loading} className="px-3 py-2 rounded-3xl bg-custom-green text-xs">
           Generate Draft
         </button>
 

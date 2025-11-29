@@ -1,6 +1,7 @@
 module.exports = {
     darkMode: ['class'],
-    content: ['./index.html','./src/**/*.{js,jsx}'], theme: {
+    content: ['./index.html','./src/**/*.{js,jsx}'], 
+    theme: {
     	extend: {
     		borderRadius: {
     			lg: 'var(--radius)',
@@ -49,6 +50,21 @@ module.exports = {
     				'4': 'hsl(var(--chart-4))',
     				'5': 'hsl(var(--chart-5))'
     			}
-    		}
+    		},
+    		keyframes: {
+    			shine: {
+    				'0%': { 
+    					backgroundPosition: '200% center' 
+    				},
+    				'100%': { 
+    					backgroundPosition: '-200% center' 
+    				},
+    			},
+    		},
+    		animation: {
+    			shine: 'shine 8s linear infinite',
+    		},
     	}
-    }, plugins: [require("tailwindcss-animate")] };
+    }, 
+    plugins: [require("tailwindcss-animate")] 
+};

@@ -33,7 +33,7 @@ export default function PromptBrain() {
 
   return (
     <div className="bg-neutral-900/70 border border-neutral-800 rounded-2xl p-4 backdrop-blur-sm">
-      <div className="mb-6 p-4 bg-neutral-950 border border-neutral-800 rounded-xl">
+      <div className="mb-6 p-4 bg-neutral-900 border border-neutral-800 rounded-xl">
         {/* <h2 className="text-lg font-semibold text-neutral-100 mb-2">Prompt Brain</h2>
         <p className="text-sm text-neutral-400 leading-relaxed">
           These prompts act as the <span className="text-neutral-300 font-medium">“brain”</span> of your AI email agent.
@@ -43,10 +43,10 @@ export default function PromptBrain() {
         </p> */}
 
         <ShinyText 
-          text="Prompt Brain!" 
+          text="Prompt Brain" 
           disabled={false} 
           speed={3} 
-          className='text-lg font-semibold mb-2 ' 
+          className='text-lg font-extrabold mb-2 ' 
         />
         <ShinyText 
           text="These prompts act as the “brain” of your AI email agent.
@@ -54,7 +54,7 @@ export default function PromptBrain() {
           Updating a prompt immediately changes how the agent categorizes messages,
           extracts tasks, and writes replies — making the system adapt to your personal workflow" 
           disabled={false} 
-          speed={3} 
+          speed={6} 
           className='text-sm' 
         />
       </div>
